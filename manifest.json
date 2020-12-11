@@ -1,0 +1,27 @@
+{
+  "manifest_version": 2,
+  "name": "Composer Contacts Mention",
+  "description": "Use @ to mention somebody on an email to bold and link.",
+  "version": "0.1.0",
+  "author": "Joaquin Ayuso de Paul",
+  "applications": {
+    "gecko": {
+      "id": "{5ce3f3ea-38fc-11eb-adc1-0242ac120002}",
+      "strict_min_version": "78.5.0"
+    }
+  },
+  "background": {
+    "scripts": [
+      "/background.js"
+    ]
+  },
+  "permissions": [
+    "compose",
+    "addressBooks"
+  ],
+  "icons": {
+    "64": "/icon-64.png",
+    "32": "/icon-32.png",
+    "16": "/icon-16.png"
+  }
+}
