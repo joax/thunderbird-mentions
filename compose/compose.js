@@ -37,7 +37,8 @@ function openPopup() {
                 // Do nothing.
                 return false;
             } else {
-                insertFullComponent(contact);
+                insertFullComponent(contact)
+                    .then(addContactToCC);
             }    
         })
         .catch((e) => {
@@ -46,20 +47,35 @@ function openPopup() {
         });
 }
 
+function addContactToCC(contact) {
+    return browser.runtime.sendMessage({ addContactToCC: contact })
+        .then((message) => {
+            console.log('Message received from BG: ', message);
+        })
+}
+
 function insertFullComponent(contact) {
 
-    // Properties brought from the Popup.
-    let url = contact.url;
-    let name = contact.name;
+    const inject = new Promise((resolve, reject) => {
+        // Properties brought from the Popup.
+        let url = contact.url;
+        let name = contact.name;
+        let id = contact.id;
 
-    // Build component to be added to the body.
-    let str = document.createElement('a');
-    str.setAttribute('href', url);
-    str.setAttribute('style', 'font-weight: bold; text-decoration: none;')
-    str.innerText = '@' + name;
+        // Build component to be added to the body.
+        let str = document.createElement('a');
+        str.setAttribute('href', url);
+        str.id = id;
+        str.innerText = '@' + name;
 
-    // Insert the HTML on the Composer
-    let strHTML = str.outerHTML;
-    document.execCommand("insertHTML", false, strHTML);
+        // Insert the HTML on the Composer
+        let strHTML = str.outerHTML;
+        document.execCommand("insertHTML", false, strHTML);
+        
+        // Return control to Script
+        resolve(contact);
+    });
+
+    return inject;    
 }
 

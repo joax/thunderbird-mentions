@@ -3,6 +3,9 @@ window.addEventListener("load", onLoad);
 window.addEventListener("blur", onClose);
 window.addEventListener("keydown", onKeyDown);
 
+// Closing Mox
+let closing = false;
+
 // Contact Books
 let books = [];
 
@@ -16,6 +19,7 @@ let books = [];
       })
 })();
 
+// Agregation
 let contacts = [];
 let mailinglists = [];
 
@@ -27,11 +31,13 @@ function compactBooks() {
       let m = books[b].mailingLists;
       mailinglists = mailinglists.concat(m);
    }
+   console.log(contacts);
    return true;
 }
 
+// Search control
 let resutls = [];
-let resultsIndex = 0;
+let resultsIndex = 1;
 
 // Track keypresses for search purposes.
 async function onKeyDown(e) {
@@ -66,7 +72,8 @@ async function onKeyDown(e) {
 function searchResults(v) {
    let results = contacts.filter((x) => { 
       if(x.properties && x.properties.DisplayName) {
-         return (x.properties.DisplayName.toLowerCase().indexOf(v) >= 0)
+         return ( x.properties.DisplayName.toLowerCase().indexOf(v) >= 0 || 
+                     (x.properties.PrimaryEmail && x.properties.PrimaryEmail.toLowerCase().indexOf(v) >= 0))
       } else {
          return false;
       }
@@ -77,7 +84,7 @@ function searchResults(v) {
 
 function cleanResults() {
    results = [];
-   resultsIndex = 0;
+   resultsIndex = 1;
    $('ul.results').html('');
 }
 
@@ -94,7 +101,11 @@ async function clearMarkedResults() {
 
 async function markResult() {
    clearMarkedResults();
-   $('#' + results[resultsIndex - 1].id).addClass('selected');
+
+   // If there are results, then mark.
+   if(results.length) {
+      $('#' + results[resultsIndex - 1].id).addClass('selected');
+   }
 }
 
 async function buildContact(contact) {
@@ -104,13 +115,19 @@ async function buildContact(contact) {
    c.innerHTML = contact.properties.DisplayName + ' (' + contact.properties.PrimaryEmail + ')';
    c.setAttribute('data-name', contact.properties.DisplayName);
    c.setAttribute('data-url', 'mailto:' + contact.properties.PrimaryEmail);
+   c.setAttribute('data-email', contact.properties.PrimaryEmail);
 
    $(c).on('click', function(event) {
+      let timestamp = (new Date()).getTime();
       let name = $(this).attr('data-name');
       let url = $(this).attr('data-url');
+      let email = $(this).attr('data-email');
+      let id = $(this).attr('id') + '-' + timestamp;
       let contact = {
+         email,
          name,
-         url
+         url,
+         id
       }
 
       // Send and Close.
@@ -119,21 +136,27 @@ async function buildContact(contact) {
    return c;
 }
 
-
 async function close(whatToSend) {
-   await messenger.runtime.sendMessage({ popupCloseMode: whatToSend }); 
-    
-   // Close window on this situation.
-   let win = await messenger.windows.getCurrent();
-   messenger.windows.remove(win.id);
+   if(!closing) {
+      console.log('close()');
+      closing = true;
+      await messenger.runtime.sendMessage({ popupCloseMode: whatToSend }); 
+      
+      // Close window on this situation.
+      let win = await messenger.windows.getCurrent();
+      messenger.windows.remove(win.id);
+   }
 }
 
 async function onClose() {
-   await messenger.runtime.sendMessage({ popupCloseMode: null }); 
+   if(!closing) {
+      console.log('onClose()');
+      closing = true;
     
-   // Close window on this situation.
-   let win = await messenger.windows.getCurrent();
-   messenger.windows.remove(win.id);
+      // Close window on this situation.
+      let win = await messenger.windows.getCurrent();
+      messenger.windows.remove(win.id);
+   }
 }
 
 // Onload, get the focus on the Form.

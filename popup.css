@@ -1,5 +1,19 @@
+:root {
+    --background-color: #ffffff;
+    --background-search: #ffffff;
+    --border-search: #606060;
+
+    --contact-list-background: #f4f4f4;
+    --contact-list-background-hover: #ec7311;
+    --contact-list-text-hover: #ffffff;
+    --contact-list-border-top-hover: #f8bc8b;
+    --contact-list-border-bottom-hover: #b1570e;
+    --contact-border-bottom: #d0d0d0;
+    --contact-border-top: #ffffff;
+}
+
 body {
-    background: white;
+    background: var(--background-color);
     padding: 0;
     margin: 0;
 
@@ -11,8 +25,9 @@ body {
 }
 
 input[type="text"] {
-    border: 1px solid white;
-    border-bottom: 1px solid #606060;
+    background-color: var(--background-search);
+    border: 1px solid var(--background-search);
+    border-bottom: 1px solid var(--border-search);
     padding: .6em;
     line-height: 20px;
     font-weight: bold;
@@ -34,15 +49,21 @@ ul li {
 }
 
 li.contact {
-    border-bottom: 1px solid #f0f0f0;
+    background-color: var(--contact-list-background);
+    border-top: 1px solid var(--contact-border-top);
+    border-bottom: 1px solid var(--contact-border-bottom);
     padding: .5em;
 }
 
 li.contact:hover {
-    background: #f0f0f0;
+    background: var(--contact-list-background-hover);
+    color: var(--contact-list-text-hover);
+    border-top: 1px solid var(--contact-list-border-top-hover);
+    border-bottom: 1px solid var(--contact-list-border-bottom-hover);
     cursor: pointer;
 }
 
 li.selected {
-    background: yellow;
+    color: var(--contact-list-text-hover);
+    background: var(--contact-list-background-hover);
 }

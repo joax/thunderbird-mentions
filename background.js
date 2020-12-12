@@ -1,3 +1,11 @@
+
+// Composer sends message to Background: Open Popup
+// Background Opens Popup
+// Popup Closes and sends Message Close Popup.
+// Background hears this Close Popup
+// Background sends Message to Composer with Contact.
+
+
 // Init Plugin
 (() => {
     // compose script
@@ -16,16 +24,18 @@ async function handleMessage(request, sender) {
     if (request.openPopup === true) {
         // Send back the contact from the search...
         return blockingPopup()
-            .then(addContactToAddressLine)
             .then((contact) => {
                 return Promise.resolve({ contact });
             })
             .catch((e) => {
                 return Promise.reject(e);
             })
+    } else if(request.addContactToCC ) {
+        // Add the Contact to BCC now.
+        return addContactToAddressLine(request.addContactToCC)
     } else {
         // Listen to the Popup with the final anwser   
-        console.log('Another Message received:', request);
+        console.log('Another Message received from Popup.');
     }
 }
 
@@ -33,12 +43,59 @@ async function addContactToAddressLine(contact) {
     // Check the contact is on To, CC or Bcc.
     // If not, add to CC (we can tweak this as an option)
     // If yes, then move from where it is to CC (or the defined option..)
+    let tabs = await messenger.tabs.query({
+        active: true
+    });
 
-    // Find the Composer Window Details
+    // Go through the tabs, and search for the contact.
+    for(var tab in tabs) {
+        // Only the non mailTab
+        if(!tabs[tab].mailTab) {
+            let details = await messenger.compose.getComposeDetails(tabs[tab].id);
+            if(details) {
+                // Search for the specific contact.
+                let body = details.body;
 
-    // Check for the contact
+                // TODO: Refactor.
+                if(body && body.indexOf(contact.id) > 0) {
+                    let email = contact.email;
+                    let name = contact.name;
 
-    // Change if needed.
+                    let to = details.to;
+                    let cc = details.cc;
+                    let bcc = details.bcc;
+
+                    let foundTo = false;
+                    let foundCC = false;
+                    let foundBCC = false;
+
+                    // first find it on the To.
+                    if(to.filter((n) => { return (n.indexOf(email) > 0); }).length) {
+                        foundTo = true;
+                    }
+
+                    // first find it on the CC.
+                    if(cc.filter((n) => { return (n.indexOf(email) > 0); }).length) {
+                       foundCC = true;
+                    }
+
+                    // first find it on the BCC.
+                    if(bcc.filter((n) => { return (n.indexOf(email) > 0); }).lenght) {
+                        foundBCC = false;
+                    }
+
+                    if(!foundCC && !foundTo && !foundBCC ) {
+                        cc.push(name + ' <' + email + '>');    
+                    }
+
+                    // Set the Details back again.
+                    let changed = await messenger.compose.setComposeDetails(tabs[tab].id, {
+                        to, cc, bcc
+                    });
+                }
+            }
+        }
+    }
 
     // Return the contact for next thing.
     return Promise.resolve(contact);
