@@ -10,26 +10,45 @@
 (() => {
     // compose script
     browser.composeScripts.register({
+        css: [
+            {file: '/compose/compose.css'},
+        ],
         js: [
-           {file: "/compose/compose.js"},
+            {file: "/jquery.min.js"}, 
+            {file: "/compose/compose.js"},
         ]
     });
+
+    // Get all the contacts up.
+    compactBooks();
 
     // Listen for the order to open the popup!
     browser.runtime.onMessage.addListener(handleMessage);
 })();
 
+// Agregation
+let contacts = [];
+let mailinglists = [];
+
+// Flatten the Contact Books for purpose of search.
+async function compactBooks() {
+    let books = await browser.addressBooks.list(true)
+    for(var b in books) {
+        let c = books[b].contacts;
+        contacts = contacts.concat(c);
+        let m = books[b].mailingLists;
+        mailinglists = mailinglists.concat(m);
+    }     
+    console.log('Contacts Compacted.')
+    return true;
+}
+
 // Handle the Popup Message
 async function handleMessage(request, sender) {
-    if (request.openPopup === true) {
-        // Send back the contact from the search...
-        return blockingPopup()
-            .then((contact) => {
-                return Promise.resolve({ contact });
-            })
-            .catch((e) => {
-                return Promise.reject(e);
-            })
+    if(request.searchContact ){
+        let val = request.searchContact;
+        let results = searchResults(val);
+        return Promise.resolve(results);
     } else if(request.addContactToCC ) {
         // Add the Contact to BCC now.
         return addContactToAddressLine(request.addContactToCC)
@@ -38,6 +57,22 @@ async function handleMessage(request, sender) {
         console.log('Another Message received from Popup.');
     }
 }
+
+// TODO: Contacts API has search function that might
+//       be natively implemented. Faster than this rough
+//       search for sure :).
+function searchResults(v) {
+    let results = contacts.filter((x) => { 
+       if(x.properties && x.properties.DisplayName) {
+          return ( x.properties.DisplayName.toLowerCase().indexOf(v) >= 0 || 
+                      (x.properties.PrimaryEmail && x.properties.PrimaryEmail.toLowerCase().indexOf(v) >= 0))
+       } else {
+          return false;
+       }
+    })
+ 
+    return results;
+ }
 
 async function addContactToAddressLine(contact) {
     // Check the contact is on To, CC or Bcc.
@@ -89,9 +124,11 @@ async function addContactToAddressLine(contact) {
                     }
 
                     // Set the Details back again.
-                    let changed = await messenger.compose.setComposeDetails(tabs[tab].id, {
+                    await messenger.compose.setComposeDetails(tabs[tab].id, {
                         to, cc, bcc
                     });
+                    console.log('CC changed.');
+                    return Promise.resolve(contact);
                 }
             }
         }
@@ -100,57 +137,3 @@ async function addContactToAddressLine(contact) {
     // Return the contact for next thing.
     return Promise.resolve(contact);
 }
-
-// Function to open a popup and await user feedback
-async function blockingPopup() {
-	async function popupClosePromise(popupId, defaultPopupCloseResponse) {
-		try {
-            // Wait for the window to be ready.
-			await messenger.windows.get(popupId);
-		} catch (e) {
-			//window does not exist, assume closed
-			return defaultPopupCloseResponse;
-        }
-        
-        // Promise to the Popup.
-		return new Promise(resolve => {
-            let popupCloseResponse = defaultPopupCloseResponse;
-            
-            // Window is closed. We can resolve the promise.
-			function windowRemoveListener(closedId) {
-				if (popupId == closedId) {
-					messenger.windows.onRemoved.removeListener(windowRemoveListener);
-					messenger.runtime.onMessage.removeListener(messageListener);
-                    
-                    // Here is the response.
-                    resolve(popupCloseResponse);
-				}
-            }
-            
-            // Message Received from the Window with the response.
-			function messageListener(request, sender, sendResponse) {
-                // Receive response from Popup.
-				if (sender.tab.windowId == popupId && request && request.popupCloseMode) {
-					popupCloseResponse = request.popupCloseMode;
-				}
-            }
-            
-            // Listen to the message.
-            messenger.runtime.onMessage.addListener(messageListener);
-            
-            // Listen to the Closure.
-			messenger.windows.onRemoved.addListener(windowRemoveListener);
-		});
-	}
-
-	let window = await messenger.windows.create({
-		 url: "popup.html",
-		 type: "popup",
-		 height: 380,
-         width: 280 });
-         
-	// await the created popup to be closed and define a default
-	// return value if the window is closed without clicking a button
-    return popupClosePromise(window.id, "cancel");
- }
-
