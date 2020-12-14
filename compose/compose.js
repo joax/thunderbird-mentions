@@ -77,19 +77,49 @@ async function onKeyDown(event) {
             // Don't print the @
             event.stopPropagation();
             event.preventDefault();
+        } else if(lastChar === 'Control' && event.key === 'j') {
+            // Push the contacts to the CC.
+            parseContactsInBody()
+                .then(addContactsToCC);
         }
 
         // Forget other key presses that don't affect the content.
-        if(event.key != 'Control' && event.key != 'Shift' && event.key != 'OS' && event.key != 'Alt' ) {
+        if(event.key != 'Shift' && event.key != 'OS' && event.key != 'Alt' ) {
             lastChar = event.key;
         }
     }
     return false;
 }
 
+// Retrieve all Contacts on the Document
+// Note:
+// We cannot rely on the tracking here as the user can
+// delete a contact and we wouldn't be able to know.
+function parseContactsInBody() {
+    let parse = new Promise((resolve, reject) => {
+        let contacts = $('a.mentionContact');
+        let contactsParsed = [];
+        
+        for(var c=0; c<contacts.length; c++) {
+            let email = $(contacts[c]).attr('data-email');
+            let name = $(contacts[c]).attr('data-name');
+            let id = $(contacts[c]).attr('data-id');
+            contactsParsed.push({
+                name,
+                email,
+                id
+            })
+        }
+
+        resolve(contactsParsed);
+    });
+    
+    return parse;
+}
+
 // Send Message to add contact.
-function addContactToCC(contact) {
-    return browser.runtime.sendMessage({ addContactToCC: contact });
+function addContactsToCC(contacts) {
+    return browser.runtime.sendMessage({ addContactsToCC: contacts });
 }
 
 // Ask background for matches.
@@ -170,8 +200,10 @@ async function buildContact(contact) {
         removeSearchBox();
     
         insertFullComponent(contact)
-            .then(addContactToCC)
             .then(addFinalSpace);
+
+            // Bulk Add 
+            //.then((c) => { return addContactsToCC([c]); });
     })
     return c;
  }
@@ -180,7 +212,7 @@ function insertSearchBox(obj) {
 
     let wrapper = document.createElement('span');
     wrapper.id = 'searchBox';
-    wrapper.style = 'border: 0px;';
+    wrapper.className = 'searchBox';
     
     let at = document.createElement('label');
     at.innerHTML = '@';
@@ -206,17 +238,13 @@ function insertSearchBox(obj) {
 }
 
 // Inserts a final space.
-function addFinalSpace() {
+function addFinalSpace(contact) {
     // And the space afterwards
     const inject = new Promise((resolve, reject) => {
-
-        // This?
+        // Add Space in the end to continue writting.
         document.getSelection().collapseToEnd();
-
         $(document.body).trigger('focus');
-
-        console.log('Space Added: ', document.hasFocus());
-        resolve();
+        resolve(contact);
     })
 
     return inject;
@@ -230,6 +258,7 @@ function insertFullComponent(contact) {
         // Properties brought from the Popup.
         let url = contact.url;
         let name = contact.name;
+        let email = contact.email;
         let id = contact.id;
 
         let span = document.createElement('span');
@@ -237,6 +266,10 @@ function insertFullComponent(contact) {
         // Build component to be added to the body.
         let str = document.createElement('a');
         str.setAttribute('href', url);
+        str.setAttribute('data-email', email);
+        str.setAttribute('data-name', name);
+        
+        str.className = 'mentionContact';
         str.id = id;
         str.innerText = '@' + name;
 

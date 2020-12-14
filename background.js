@@ -49,9 +49,9 @@ async function handleMessage(request, sender) {
         let val = request.searchContact;
         let results = searchResults(val);
         return Promise.resolve(results);
-    } else if(request.addContactToCC ) {
+    } else if(request.addContactsToCC ) {
         // Add the Contact to BCC now.
-        return addContactToAddressLine(sender.tab.id, request.addContactToCC)
+        return addContactToAddressLine(sender.tab.id, request.addContactsToCC)
     } else {
         // Listen to the Popup with the final anwser   
         console.log('Another Message received from Popup.');
@@ -74,17 +74,19 @@ function searchResults(v) {
     return results;
  }
 
-async function addContactToAddressLine(tabId, contact) {
-    // Check the contact is on To, CC or Bcc.
-    // If not, add to CC (we can tweak this as an option)
-    // If yes, then move from where it is to CC (or the defined option..)
-    let details = await messenger.compose.getComposeDetails(tabId);
-    if(details) {
-        // Search for the specific contact.
-        let body = details.body;
+// Add Contacts to the CC of the Compose Window.
+async function addContactToAddressLine(tabId, contacts) {
 
-        // TODO: Refactor.
-        if(body && body.indexOf(contact.id) > 0) {
+    // Gather the compose details to add contacts.
+    let details = await messenger.compose.getComposeDetails(tabId);
+    
+    // Is this a compose window?
+    if(details) {
+
+        // Add the contacts to the CC
+        for(var i=0; i<contacts.length; i++) {
+            let contact = contacts[i];
+
             let email = contact.email;
             let name = contact.name;
 
@@ -116,14 +118,12 @@ async function addContactToAddressLine(tabId, contact) {
             }
 
             // Set the Details back again.
-            await messenger.compose.setComposeDetails(tabs[tab].id, {
+            await messenger.compose.setComposeDetails(tabId, {
                 to, cc, bcc
             });
-            console.log('CC changed.');
-            return Promise.resolve(contact);
         }
     }
 
-    // Return the contact for next thing.
-    return Promise.resolve(contact);
+    // Return the contacts for next thing (if any).
+    return Promise.resolve(contacts);
 }

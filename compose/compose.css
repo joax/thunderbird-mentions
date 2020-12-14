@@ -12,12 +12,22 @@
     --contact-border-top: #ffffff;
 }
 
+span.searchBox {
+    border: 0px;
+    display: inline-block;
+}
+
 #resultsWrapper {
     position: absolute;
     z-index: 1000;
     max-width: 300px;
     background: white;
     margin-top: 22px;
+}
+
+#resultsWrapper label,
+#resultsWrapper input {
+    border: 0px;
 }
 
 input[type="text"] {
