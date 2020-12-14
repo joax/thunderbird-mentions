@@ -22,6 +22,9 @@
     // Get all the contacts up.
     compactBooks();
 
+    // Listen to the Action button
+    addComposeActionListener();
+
     // Listen for the order to open the popup!
     browser.runtime.onMessage.addListener(handleMessage);
 })();
@@ -74,8 +77,18 @@ function searchResults(v) {
     return results;
  }
 
+// Listen to the Compose Action Button
+function addComposeActionListener() {
+    browser.composeAction.onClicked.addListener(tab => {
+        let tabId = tab.id;
+
+        // Message the Composer for the Contacts.
+        addContactToAddressLine(tabId); 
+    });
+}
+
 // Add Contacts to the CC of the Compose Window.
-async function addContactToAddressLine(tabId, contacts) {
+async function addContactToAddressLine(tabId, contactsArrived = []) {
 
     // Gather the compose details to add contacts.
     let details = await messenger.compose.getComposeDetails(tabId);
@@ -83,12 +96,17 @@ async function addContactToAddressLine(tabId, contacts) {
     // Is this a compose window?
     if(details) {
 
+        let body = details.body;
+        let document = new DOMParser().parseFromString(details.body, "text/html");
+
+        let contacts = document.getElementsByClassName('mentionContact');
+
         // Add the contacts to the CC
         for(var i=0; i<contacts.length; i++) {
             let contact = contacts[i];
 
-            let email = contact.email;
-            let name = contact.name;
+            let email = contact.getAttribute('data-email');
+            let name = contact.getAttribute('data-name');
 
             let to = details.to;
             let cc = details.cc;

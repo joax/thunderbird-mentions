@@ -15,6 +15,17 @@
       "/background.js"
     ]
   },
+  "compose_action": {
+    "default_title": "Add mentions",
+    "default_icon": "/icon-add-recipients.png",
+    "theme_icons": [
+      {
+        "light": "/icon-add-recipients-dark.png",
+        "dark": "/icon-add-recipients.png",
+        "size": 32
+      }
+    ]
+  },
   "permissions": [
     "compose",
     "addressBooks"
