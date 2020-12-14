@@ -51,7 +51,7 @@ async function handleMessage(request, sender) {
         return Promise.resolve(results);
     } else if(request.addContactToCC ) {
         // Add the Contact to BCC now.
-        return addContactToAddressLine(request.addContactToCC)
+        return addContactToAddressLine(sender.tab.id, request.addContactToCC)
     } else {
         // Listen to the Popup with the final anwser   
         console.log('Another Message received from Popup.');
@@ -74,63 +74,53 @@ function searchResults(v) {
     return results;
  }
 
-async function addContactToAddressLine(contact) {
+async function addContactToAddressLine(tabId, contact) {
     // Check the contact is on To, CC or Bcc.
     // If not, add to CC (we can tweak this as an option)
     // If yes, then move from where it is to CC (or the defined option..)
-    let tabs = await messenger.tabs.query({
-        active: true
-    });
+    let details = await messenger.compose.getComposeDetails(tabId);
+    if(details) {
+        // Search for the specific contact.
+        let body = details.body;
 
-    // Go through the tabs, and search for the contact.
-    for(var tab in tabs) {
-        // Only the non mailTab
-        if(!tabs[tab].mailTab) {
-            let details = await messenger.compose.getComposeDetails(tabs[tab].id);
-            if(details) {
-                // Search for the specific contact.
-                let body = details.body;
+        // TODO: Refactor.
+        if(body && body.indexOf(contact.id) > 0) {
+            let email = contact.email;
+            let name = contact.name;
 
-                // TODO: Refactor.
-                if(body && body.indexOf(contact.id) > 0) {
-                    let email = contact.email;
-                    let name = contact.name;
+            let to = details.to;
+            let cc = details.cc;
+            let bcc = details.bcc;
 
-                    let to = details.to;
-                    let cc = details.cc;
-                    let bcc = details.bcc;
+            let foundTo = false;
+            let foundCC = false;
+            let foundBCC = false;
 
-                    let foundTo = false;
-                    let foundCC = false;
-                    let foundBCC = false;
-
-                    // first find it on the To.
-                    if(to.filter((n) => { return (n.indexOf(email) > 0); }).length) {
-                        foundTo = true;
-                    }
-
-                    // first find it on the CC.
-                    if(cc.filter((n) => { return (n.indexOf(email) > 0); }).length) {
-                       foundCC = true;
-                    }
-
-                    // first find it on the BCC.
-                    if(bcc.filter((n) => { return (n.indexOf(email) > 0); }).lenght) {
-                        foundBCC = false;
-                    }
-
-                    if(!foundCC && !foundTo && !foundBCC ) {
-                        cc.push(name + ' <' + email + '>');    
-                    }
-
-                    // Set the Details back again.
-                    await messenger.compose.setComposeDetails(tabs[tab].id, {
-                        to, cc, bcc
-                    });
-                    console.log('CC changed.');
-                    return Promise.resolve(contact);
-                }
+            // first find it on the To.
+            if(to.filter((n) => { return (n.indexOf(email) > 0); }).length) {
+                foundTo = true;
             }
+
+            // first find it on the CC.
+            if(cc.filter((n) => { return (n.indexOf(email) > 0); }).length) {
+                foundCC = true;
+            }
+
+            // first find it on the BCC.
+            if(bcc.filter((n) => { return (n.indexOf(email) > 0); }).lenght) {
+                foundBCC = false;
+            }
+
+            if(!foundCC && !foundTo && !foundBCC ) {
+                cc.push(name + ' <' + email + '>');    
+            }
+
+            // Set the Details back again.
+            await messenger.compose.setComposeDetails(tabs[tab].id, {
+                to, cc, bcc
+            });
+            console.log('CC changed.');
+            return Promise.resolve(contact);
         }
     }
 
