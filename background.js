@@ -10,147 +10,138 @@
 (() => {
     // compose script
     browser.composeScripts.register({
+        css: [
+            {file: '/compose/compose.css'},
+        ],
         js: [
-           {file: "/compose/compose.js"},
+            {file: "/jquery.min.js"}, 
+            {file: "/compose/compose.js"},
         ]
     });
+
+    // Get all the contacts up.
+    compactBooks();
+
+    // Listen to the Action button
+    addComposeActionListener();
 
     // Listen for the order to open the popup!
     browser.runtime.onMessage.addListener(handleMessage);
 })();
 
+// Agregation
+let contacts = [];
+let mailinglists = [];
+
+// Flatten the Contact Books for purpose of search.
+async function compactBooks() {
+    let books = await browser.addressBooks.list(true)
+    for(var b in books) {
+        let c = books[b].contacts;
+        contacts = contacts.concat(c);
+        let m = books[b].mailingLists;
+        mailinglists = mailinglists.concat(m);
+    }     
+    console.log('Contacts Compacted.')
+    return true;
+}
+
 // Handle the Popup Message
 async function handleMessage(request, sender) {
-    if (request.openPopup === true) {
-        // Send back the contact from the search...
-        return blockingPopup()
-            .then((contact) => {
-                return Promise.resolve({ contact });
-            })
-            .catch((e) => {
-                return Promise.reject(e);
-            })
-    } else if(request.addContactToCC ) {
+    if(request.searchContact ){
+        let val = request.searchContact;
+        let results = searchResults(val);
+        return Promise.resolve(results);
+    } else if(request.addContactsToCC ) {
         // Add the Contact to BCC now.
-        return addContactToAddressLine(request.addContactToCC)
+        return addContactToAddressLine(sender.tab.id, request.addContactsToCC)
     } else {
         // Listen to the Popup with the final anwser   
         console.log('Another Message received from Popup.');
     }
 }
 
-async function addContactToAddressLine(contact) {
-    // Check the contact is on To, CC or Bcc.
-    // If not, add to CC (we can tweak this as an option)
-    // If yes, then move from where it is to CC (or the defined option..)
-    let tabs = await messenger.tabs.query({
-        active: true
+// TODO: Contacts API has search function that might
+//       be natively implemented. Faster than this rough
+//       search for sure :).
+function searchResults(v) {
+    let results = contacts.filter((x) => { 
+       if(x.properties && x.properties.DisplayName) {
+          return ( x.properties.DisplayName.toLowerCase().indexOf(v) >= 0 || 
+                      (x.properties.PrimaryEmail && x.properties.PrimaryEmail.toLowerCase().indexOf(v) >= 0))
+       } else {
+          return false;
+       }
+    })
+ 
+    return results;
+ }
+
+// Listen to the Compose Action Button
+function addComposeActionListener() {
+    browser.composeAction.onClicked.addListener(tab => {
+        let tabId = tab.id;
+
+        // Message the Composer for the Contacts.
+        addContactToAddressLine(tabId); 
     });
+}
 
-    // Go through the tabs, and search for the contact.
-    for(var tab in tabs) {
-        // Only the non mailTab
-        if(!tabs[tab].mailTab) {
-            let details = await messenger.compose.getComposeDetails(tabs[tab].id);
-            if(details) {
-                // Search for the specific contact.
-                let body = details.body;
+// Add Contacts to the CC of the Compose Window.
+async function addContactToAddressLine(tabId, contactsArrived = []) {
 
-                // TODO: Refactor.
-                if(body && body.indexOf(contact.id) > 0) {
-                    let email = contact.email;
-                    let name = contact.name;
+    // Gather the compose details to add contacts.
+    let details = await messenger.compose.getComposeDetails(tabId);
+    
+    // Is this a compose window?
+    if(details) {
 
-                    let to = details.to;
-                    let cc = details.cc;
-                    let bcc = details.bcc;
+        let body = details.body;
+        let document = new DOMParser().parseFromString(details.body, "text/html");
 
-                    let foundTo = false;
-                    let foundCC = false;
-                    let foundBCC = false;
+        let contacts = document.getElementsByClassName('mentionContact');
 
-                    // first find it on the To.
-                    if(to.filter((n) => { return (n.indexOf(email) > 0); }).length) {
-                        foundTo = true;
-                    }
+        // Add the contacts to the CC
+        for(var i=0; i<contacts.length; i++) {
+            let contact = contacts[i];
 
-                    // first find it on the CC.
-                    if(cc.filter((n) => { return (n.indexOf(email) > 0); }).length) {
-                       foundCC = true;
-                    }
+            let email = contact.getAttribute('data-email');
+            let name = contact.getAttribute('data-name');
 
-                    // first find it on the BCC.
-                    if(bcc.filter((n) => { return (n.indexOf(email) > 0); }).lenght) {
-                        foundBCC = false;
-                    }
+            let to = details.to;
+            let cc = details.cc;
+            let bcc = details.bcc;
 
-                    if(!foundCC && !foundTo && !foundBCC ) {
-                        cc.push(name + ' <' + email + '>');    
-                    }
+            let foundTo = false;
+            let foundCC = false;
+            let foundBCC = false;
 
-                    // Set the Details back again.
-                    let changed = await messenger.compose.setComposeDetails(tabs[tab].id, {
-                        to, cc, bcc
-                    });
-                }
+            // first find it on the To.
+            if(to.filter((n) => { return (n.indexOf(email) > 0); }).length) {
+                foundTo = true;
             }
+
+            // first find it on the CC.
+            if(cc.filter((n) => { return (n.indexOf(email) > 0); }).length) {
+                foundCC = true;
+            }
+
+            // first find it on the BCC.
+            if(bcc.filter((n) => { return (n.indexOf(email) > 0); }).lenght) {
+                foundBCC = false;
+            }
+
+            if(!foundCC && !foundTo && !foundBCC ) {
+                cc.push(name + ' <' + email + '>');    
+            }
+
+            // Set the Details back again.
+            await messenger.compose.setComposeDetails(tabId, {
+                to, cc, bcc
+            });
         }
     }
 
-    // Return the contact for next thing.
-    return Promise.resolve(contact);
+    // Return the contacts for next thing (if any).
+    return Promise.resolve(contacts);
 }
-
-// Function to open a popup and await user feedback
-async function blockingPopup() {
-	async function popupClosePromise(popupId, defaultPopupCloseResponse) {
-		try {
-            // Wait for the window to be ready.
-			await messenger.windows.get(popupId);
-		} catch (e) {
-			//window does not exist, assume closed
-			return defaultPopupCloseResponse;
-        }
-        
-        // Promise to the Popup.
-		return new Promise(resolve => {
-            let popupCloseResponse = defaultPopupCloseResponse;
-            
-            // Window is closed. We can resolve the promise.
-			function windowRemoveListener(closedId) {
-				if (popupId == closedId) {
-					messenger.windows.onRemoved.removeListener(windowRemoveListener);
-					messenger.runtime.onMessage.removeListener(messageListener);
-                    
-                    // Here is the response.
-                    resolve(popupCloseResponse);
-				}
-            }
-            
-            // Message Received from the Window with the response.
-			function messageListener(request, sender, sendResponse) {
-                // Receive response from Popup.
-				if (sender.tab.windowId == popupId && request && request.popupCloseMode) {
-					popupCloseResponse = request.popupCloseMode;
-				}
-            }
-            
-            // Listen to the message.
-            messenger.runtime.onMessage.addListener(messageListener);
-            
-            // Listen to the Closure.
-			messenger.windows.onRemoved.addListener(windowRemoveListener);
-		});
-	}
-
-	let window = await messenger.windows.create({
-		 url: "popup.html",
-		 type: "popup",
-		 height: 380,
-         width: 280 });
-         
-	// await the created popup to be closed and define a default
-	// return value if the window is closed without clicking a button
-    return popupClosePromise(window.id, "cancel");
- }
-

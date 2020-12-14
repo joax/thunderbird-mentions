@@ -1,3 +1,5 @@
+![](https://github.com/joax/thunderbird-mentions/workflows/CI/badge.svg)
+
 ![Logo](/icon-128.png?raw=true "Mentions of Contacts")
 
 # Mentions of contacts on email composer (proof of concept)
