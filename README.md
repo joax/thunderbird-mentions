@@ -13,7 +13,7 @@ This add-on has been tested on Thunderbird 78.5.0 on Ubuntu 20.04. Please provid
 
 # Screenshots
 ![Autofill](/preview-autofill.png?raw=true "Autofill")
-![Filled](/preview-filled?raw=true "Contact chosen")
+![Filled](/preview-filled.png?raw=true "Contact chosen")
 ![Added](/preview-added-to-cc.png?raw=true "Added to CC")
 ![Preview](/preview-on-email.png?raw=true "How it looks on email")
 ![Click](/preview-click-on-link.png?raw=true "Click on the Link opens new composer")
