@@ -1,10 +1,8 @@
+// Background.js
 
-// Composer sends message to Background: Open Popup
-// Background Opens Popup
-// Popup Closes and sends Message Close Popup.
-// Background hears this Close Popup
-// Background sends Message to Composer with Contact.
-
+// Agregation
+let contacts = [];
+let mailinglists = [];
 
 // Init Plugin
 (() => {
@@ -25,24 +23,29 @@
     // Listen to the Action button
     addComposeActionListener();
 
+    // Disable the Button if there is no contacts
+    addComposerActionDisablerListener();
+
     // Listen for the order to open the popup!
     browser.runtime.onMessage.addListener(handleMessage);
 })();
 
-// Agregation
-let contacts = [];
-let mailinglists = [];
-
 // Flatten the Contact Books for purpose of search.
 async function compactBooks() {
+    
+    // Clean
+    contacts = [];
+    mailinglists = [];
+
+    // Merge
     let books = await browser.addressBooks.list(true)
     for(var b in books) {
         let c = books[b].contacts;
         contacts = contacts.concat(c);
         let m = books[b].mailingLists;
         mailinglists = mailinglists.concat(m);
-    }     
-    console.log('Contacts Compacted.')
+    }
+    console.log('Contacts Compacted.');
     return true;
 }
 
@@ -76,6 +79,39 @@ function searchResults(v) {
  
     return results;
  }
+
+// Listen to the Compose Action Button
+function addComposerActionDisablerListener() {
+    browser.tabs.onCreated.addListener(tab => {
+        // Check if there are contacts...
+        if(contacts.length == 0) {
+            // Disable the button.
+            browser.composeAction.disable(tab.id);
+            browser.composeAction.setTitle({ 
+                tabId: tab.id, 
+                title: 'No contacts!'
+            });
+        }
+    })
+
+    // This is that when an addressBook is created, we 
+    // re compact the contacts.
+    browser.addressBooks.onCreated.addListener(addressBook => {
+        compactBooks();
+    })
+
+    // We listen to the contacts to see if there is any
+    // new one, and we re compact the books.
+    browser.contacts.onCreated.addListener(contact => {
+        compactBooks();
+    })
+
+    // We listen to the contacts to see if there is any
+    // chante, and we re compact the books.
+    browser.contacts.onUpdated.addListener(contact => {
+        compactBooks();
+    })
+}
 
 // Listen to the Compose Action Button
 function addComposeActionListener() {
@@ -143,5 +179,5 @@ async function addContactToAddressLine(tabId, contactsArrived = []) {
     }
 
     // Return the contacts for next thing (if any).
-    return Promise.resolve(contacts);
+    return Promise.resolve(contactsArrived);
 }

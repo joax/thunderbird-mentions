@@ -8,7 +8,6 @@ let books = [];
 
 // Keep track of the last key pressed.
 let lastChar = '';
-let selection = '';
 
 // Search control
 let results = [];
@@ -37,20 +36,34 @@ async function onKeyDown(event) {
             // Move up on the list.
             resultsIndex = (resultsIndex > 1) ? resultsIndex - 1 : resultsIndex;
             markResult();
-        } else if(key === 'Shift' || key === 'OS' || key === 'F1' || key === 'F2' || key === 'F3' || key === 'F4' || key === 'F5' || key === 'F6' || key === 'F7' || key === 'F8' || key === 'F9' || key === 'F10' || key === 'F11' || key === 'F12') {
+        } else if(key === 'Control' || key === 'Alt' || key === 'Caps Lock' || key === 'Shift' || key === 'OS' || key === 'F1' || key === 'F2' || key === 'F3' || key === 'F4' || key === 'F5' || key === 'F6' || key === 'F7' || key === 'F8' || key === 'F9' || key === 'F10' || key === 'F11' || key === 'F12') {
             // Do Nothing.
         } else if(key === 'Enter') {
-            $('#' + results[resultsIndex - 1].id).trigger('click');
+            if(results.length > 0) {
+                $('#' + results[resultsIndex - 1].id).trigger('click');
+            } 
         } else {
+            // Logic will depend on value of input field.
+            let value = input.value;
+
             // Take care of Space and backspace first.
             if(key === 'Backspace') {
-                input.setAttribute('value', input.value.slice(0,input.value.length - 1));
-            } else if(key === 'Space') {
-                input.setAttribute('value', input.value + ' ');
+                if(value.length > 0) {
+                    input.setAttribute('value', input.value.slice(0,input.value.length - 1));
+                } else {
+                    // Close the Searchbox.
+                    removeSearchBox();
+                }
+            } else if(key === 'Space' || key === ' ') {
+                // Only add Space after the first letter.
+                if(value.length > 0) {
+                    input.setAttribute('value', input.value + ' ');
+                }
             } else {
                 // Print the key on the box.
                 input.setAttribute('value', input.value + key);
             }
+
             let val = input.value;
             if(val.length >= 3) {
                 // Search when the box is over 3 characters
@@ -60,12 +73,11 @@ async function onKeyDown(event) {
                 markResult();
             }
         }
-
     } else {
         if((lastChar === ' ' || lastChar === 'Enter' || lastChar ==='Tab' || lastChar === '') && event.key === '@') {
-            
-            // Insert Search Box (save selection)
-            selection = document.getSelection().focusNode;
+
+            // Get the context of the cursor.
+            let selection = document.getSelection().focusNode;
 
             // If no selection, then come up a node.
             if(selection.nodeName === '#text' || selection.nodeName === 'TEXT') {
