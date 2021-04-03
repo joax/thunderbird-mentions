@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "Composer Contacts Mention",
   "description": "Use @ to mention somebody on an email to bold and link.",
-  "version": "0.6.1",
+  "version": "0.6.3",
   "author": "Joaquin Ayuso de Paul",
   "applications": {
     "gecko": {
