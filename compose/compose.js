@@ -17,7 +17,7 @@ let resultsIndex = 1;
 async function onKeyDown(event) {
     
     let searchBoxExist = document.getElementById('searchBox');
-    
+
     if(searchBoxExist) {
         let key = event.key;
         let input = document.getElementById('searchContact');
@@ -96,7 +96,7 @@ async function onKeyDown(event) {
         }
 
         // Forget other key presses that don't affect the content.
-        if(event.key != 'Shift' && event.key != 'OS' && event.key != 'Alt' ) {
+        if(event.key != 'Shift' && event.key != 'OS' && event.key != 'Alt' && event.key != 'AltGraph' ) {
             lastChar = event.key;
         }
     }
@@ -141,12 +141,20 @@ async function searchResults(v) {
  }
 
 // Remove the Search Box.
-function removeSearchBox() {
+function removeSearchBox(dontReplaceValue = false) {
     // Remove Box.
     let box = document.getElementById('searchBox');
-    
+    let input = document.getElementById('searchContact');
+    let value = '@' + input.value;
+
     // Remove the box.
     box.remove();
+
+    if(!dontReplaceValue) {
+        // Add the text that was in the box as
+        // replacement. 
+        document.execCommand("insertText", false, value);
+    }
 }
 
 // Clean Results from Search
@@ -209,7 +217,7 @@ async function buildContact(contact) {
             id
         }
     
-        removeSearchBox();
+        removeSearchBox(true);
     
         insertFullComponent(contact)
             .then(addFinalSpace);
