@@ -141,20 +141,11 @@ async function searchResults(v) {
  }
 
 // Remove the Search Box.
-function removeSearchBox(dontReplaceValue = false) {
+function removeSearchBox() {
     // Remove Box.
     let box = document.getElementById('searchBox');
-    let input = document.getElementById('searchContact');
-    let value = '@' + input.value;
-
     // Remove the box.
     box.remove();
-
-    if(!dontReplaceValue) {
-        // Add the text that was in the box as
-        // replacement. 
-        document.execCommand("insertText", false, value);
-    }
 }
 
 // Clean Results from Search
@@ -217,7 +208,7 @@ async function buildContact(contact) {
             id
         }
     
-        removeSearchBox(true);
+        removeSearchBox();
     
         insertFullComponent(contact)
             .then(addFinalSpace);
